@@ -1,0 +1,7 @@
+[master 6d04699] modify date:20190731
+ 2 files changed, 23 insertions(+)
+ create mode 100644 backup.sh
+ create mode 100644 log/log.2019073115
+To github.com:DMStudent/hive.git
+   aec63d9..6d04699  master -> master
+Branch 'master' set up to track remote branch 'master' from 'origin'.

@@ -14,8 +14,10 @@ select
     ,show_click_tab.to_momo_id as to_momo_id
     ,show_click_tab.is_show as is_show
     ,show_click_tab.is_click
-    ,COALESCE(hi_tab.has_send_first_sayhi, 0) as is_sayHi
-    ,COALESCE(hi_tab.is_replyed_sayhi_today, 0) as is_reply
+    ,CASE WHEN hi_tab.sayhi_timestamp>0 then 1 else 0 END AS is_sayHi
+    ,CASE WHEN hi_tab.reply_timestamp>0 then 1 else 0 END AS is_reply    
+    -- ,COALESCE(hi_tab.has_send_first_sayhi, 0) as is_sayHi
+    -- ,COALESCE(hi_tab.is_replyed_sayhi_today, 0) as is_reply
     ,show_click_tab.from_gender as from_gender
     ,show_click_tab.to_gender as to_gender
     ,show_click_tab.request_params as request_params
@@ -26,6 +28,8 @@ select
     ,show_click_tab.hour as hour
     ,show_click_tab.show_time as show_time
     ,show_click_tab.click_time as click_time
+    ,hi_tab.sayhi_timestamp as sayhi_time
+    ,hi_tab.reply_timestamp as reply_time
     ,show_click_tab.user_agent as user_agent
 from
 (
@@ -178,23 +182,58 @@ from
 ) show_click_tab  
 LEFT OUTER JOIN     
 (
-    SELECT
-        from_momo_id
-        ,to_momo_id
-        ,has_send_first_sayhi
-        ,send_sayhi_num
-        ,is_replyed_sayhi_today
-        ,send_msg_num
-        ,receive_msg_num
-        ,read_msg_event_num
-    FROM online.ml_user_pair_msg_theme
-    WHERE partition_date = '${hivevar:partition_date}'
-        AND has_send_first_sayhi=1
-        AND first_sayhi_source_type=1
-        AND length(from_momo_id) <= 12
-        AND length(to_momo_id) <= 12
-        AND from_momo_id != '' AND to_momo_id != ''
+SELECT
+	from_momo_id
+    ,to_momo_id
+    ,sayhi_timestamp
+    ,reply_timestamp
+    FROM
+    (
+        SELECT
+            basic.from_momo_id as from_momo_id
+            ,basic.to_momo_id as to_momo_id
+            ,basic.display_timestamp as sayhi_timestamp
+            ,COALESCE(reply.display_timestamp, 0) as reply_timestamp
+         --   ,reply.partition_date as partition_date
+            ,row_number() over(distribute BY basic.from_momo_id, basic.to_momo_id, basic.display_timestamp sort BY reply.display_timestamp asc) rk 
+        FROM
+        (
+            SELECT 
+                partition_date,
+                sender_id AS from_momo_id,
+                receiver_id AS to_momo_id,
+                cast(msg_timestamp AS int) AS display_timestamp
+            FROM online.bl_msg_detail
+            WHERE partition_date = '${hivevar:partition_yesterday}'
+            AND partition_classification = 'p2p'
+            AND msg_classification='p2p'
+            AND is_first_sayhi = 1
+            AND is_sayhi = 1
+            AND sayhi_source_type = 1
+        ) basic 
+        left join 
+        (
+            SELECT 
+                partition_date,
+                sender_id AS from_momo_id,
+                receiver_id AS to_momo_id,
+                cast(msg_timestamp AS int) AS display_timestamp
+            FROM online.bl_msg_detail
+            WHERE partition_date = '${hivevar:partition_date}'
+            UNION all
+            SELECT 
+                partition_date,
+                sender_id AS from_momo_id,
+                receiver_id AS to_momo_id,
+                cast(msg_timestamp AS int) AS display_timestamp
+            FROM online.bl_msg_detail
+            WHERE partition_date = '${hivevar:partition_yesterday}'
+
+        ) reply 
+        on basic.from_momo_id = reply.to_momo_id and basic.to_momo_id = reply.from_momo_id
+        where (basic.display_timestamp <= reply.display_timestamp and basic.display_timestamp + 86400 >= reply.display_timestamp) or reply.display_timestamp=0
+    ) basic_reply
+    WHERE rk<2  
 ) hi_tab 
 ON show_click_tab.from_momo_id = hi_tab.from_momo_id 
     AND show_click_tab.to_momo_id = hi_tab.to_momo_id 
-                     
