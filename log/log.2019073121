@@ -1,0 +1,9 @@
+[master 62099b5] modify date:20190731
+ 5 files changed, 79 insertions(+), 19 deletions(-)
+ create mode 100644 log/log.2019073121
+ create mode 100644 nearby_people/ bl_msg_detail.hql
+ create mode 100644 nearby_people/new_table.hql
+Warning: Permanently added the RSA host key for IP address '192.30.253.112' to the list of known hosts.
+To github.com:DMStudent/hive.git
+   6d04699..62099b5  master -> master
+Branch 'master' set up to track remote branch 'master' from 'origin'.
