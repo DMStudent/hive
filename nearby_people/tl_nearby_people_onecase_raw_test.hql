@@ -194,10 +194,11 @@ LEFT OUTER JOIN
             AND partition_classification = 'p2p'
         ) reply 
         on basic.from_momo_id = reply.to_momo_id and basic.to_momo_id = reply.from_momo_id
-        where (basic.display_timestamp <= reply.display_timestamp and basic.display_timestamp + 86400 >= reply.display_timestamp) or reply.display_timestamp=0
+        where (basic.display_timestamp <= reply.display_timestamp and basic.display_timestamp + 86400 >= reply.display_timestamp) or reply.display_timestamp IS NULL
     ) basic_reply
     WHERE rk<2  
 ) hi_tab 
 ON show_click_tab.from_momo_id = hi_tab.from_momo_id 
     AND show_click_tab.to_momo_id = hi_tab.to_momo_id 
-
+where (show_click_tab.click_time-60 <= hi_tab.reply_timestamp and show_click_tab.click_time + 3600 >= hi_tab.reply_timestamp) or hi_tab.reply_timestamp=0 or hi_tab.reply_timestamp IS NULL
+    
